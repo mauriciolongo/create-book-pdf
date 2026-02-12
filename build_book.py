@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Build book PDF from chapter_*.md files using WeasyPrint."""
 import argparse
+import base64
 import glob
 import html
+import mimetypes
 import os
 import re
 import sys
@@ -57,13 +59,25 @@ def typographic_substitutions(text):
     text = text.replace('--', '\u2014')
     return text
 
-def build_html(chapters, title=None, author=None):
+def image_to_data_uri(image_path):
+    mime_type, _ = mimetypes.guess_type(image_path)
+    if not mime_type:
+        mime_type = 'image/png'
+    with open(image_path, 'rb') as f:
+        encoded = base64.b64encode(f.read()).decode('ascii')
+    return f'data:{mime_type};base64,{encoded}'
+
+def build_html(chapters, title=None, author=None, cover=None):
     css = read_css_from_template(TEMPLATE_CSS_PATH)
 
     parts = []
     parts.append('<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n<style>')
     parts.append(css)
     parts.append('</style>\n</head>\n<body>\n')
+
+    if cover:
+        data_uri = image_to_data_uri(cover)
+        parts.append(f'<div class="cover-page"><img src="{data_uri}" alt="Cover"></div>\n')
 
     if title or author:
         parts.append('<div class="title-page">\n')
@@ -103,6 +117,7 @@ def main():
     parser.add_argument('directory', help='Directory containing chapter_*.md files')
     parser.add_argument('--title', default=None, help='Book title for the title page')
     parser.add_argument('--author', default=None, help='Author name for the title page')
+    parser.add_argument('--cover', default=None, help='Path to a cover image (PNG, JPG, etc.)')
     args = parser.parse_args()
 
     chapter_dir = os.path.abspath(args.directory)
@@ -115,8 +130,16 @@ def main():
     for f in chapter_files:
         print(f"  {os.path.basename(f)}")
 
+    cover_path = None
+    if args.cover:
+        cover_path = os.path.abspath(args.cover)
+        if not os.path.isfile(cover_path):
+            print(f"Cover image not found: {cover_path}")
+            sys.exit(1)
+        print(f"Cover image: {cover_path}")
+
     chapters = [parse_chapter(f) for f in chapter_files]
-    html_content = build_html(chapters, title=args.title, author=args.author)
+    html_content = build_html(chapters, title=args.title, author=args.author, cover=cover_path)
 
     # Convert directly to PDF with WeasyPrint
     from weasyprint import HTML
