@@ -1,0 +1,15 @@
+{
+  "name": "create-book-pdf",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "bun run build_book.ts"
+  },
+  "dependencies": {
+    "pdfmake": "^0.2.0"
+  },
+  "devDependencies": {
+    "@types/pdfmake": "^0.2.0",
+    "@types/bun": "latest"
+  }
+}
