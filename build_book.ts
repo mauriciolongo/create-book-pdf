@@ -32,6 +32,7 @@ interface BuildOptions {
   title?: string;
   author?: string;
   cover?: string;
+  lang?: string;
 }
 
 interface FontDescriptors {
@@ -42,6 +43,47 @@ interface FontDescriptors {
     bolditalics: string;
   };
 }
+
+// ---- Chapter heading translations ----
+
+const CHAPTER_TRANSLATIONS: Record<string, string> = {
+  EN: "CHAPTER",
+  PT: "CAPÍTULO",
+  FR: "CHAPITRE",
+  ES: "CAPÍTULO",
+  DE: "KAPITEL",
+  IT: "CAPITOLO",
+  NL: "HOOFDSTUK",
+  SV: "KAPITEL",
+  DA: "KAPITEL",
+  NO: "KAPITTEL",
+  FI: "LUKU",
+  PL: "ROZDZIAŁ",
+  RO: "CAPITOLUL",
+  CS: "KAPITOLA",
+  SK: "KAPITOLA",
+  HU: "FEJEZET",
+  HR: "POGLAVLJE",
+  SL: "POGLAVJE",
+  BS: "POGLAVLJE",
+  SR: "ПОГЛАВЉЕ",
+  BG: "ГЛАВА",
+  EL: "ΚΕΦΑΛΑΙΟ",
+  CA: "CAPÍTOL",
+  GL: "CAPÍTULO",
+  EU: "KAPITULUA",
+  GA: "CAIBIDIL",
+  IS: "KAFLI",
+  LT: "SKYRIUS",
+  LV: "NODAĻA",
+  ET: "PEATÜKK",
+  MT: "KAPITLU",
+  SQ: "KAPITULLI",
+  MK: "ПОГЛАВЈЕ",
+  CY: "PENNOD",
+  UK: "РОЗДІЛ",
+  BE: "РАЗДЗЕЛ",
+};
 
 // ---- Constants ----
 
@@ -71,6 +113,8 @@ function parseArgs(): { directory: string; options: BuildOptions } {
       options.author = args[++i];
     } else if (args[i] === "--cover" && i + 1 < args.length) {
       options.cover = args[++i];
+    } else if (args[i] === "--lang" && i + 1 < args.length) {
+      options.lang = args[++i].toUpperCase();
     } else if (!args[i].startsWith("--")) {
       directory = args[i];
     }
@@ -78,7 +122,7 @@ function parseArgs(): { directory: string; options: BuildOptions } {
 
   if (!directory) {
     console.error(
-      'Usage: bun run build_book.ts <directory> [--title "Title"] [--author "Author"] [--cover path/to/image]',
+      'Usage: bun run build_book.ts <directory> [--title "Title"] [--author "Author"] [--cover path/to/image] [--lang CODE]',
     );
     process.exit(1);
   }
@@ -88,15 +132,26 @@ function parseArgs(): { directory: string; options: BuildOptions } {
 
 // ---- Chapter parsing ----
 
-function parseChapter(filepath: string): ChapterElement[] {
+function parseChapter(filepath: string, chapterWord: string = "CHAPTER"): ChapterElement[] {
   const content = readFileSync(filepath, "utf-8");
   const lines = content.split("\n");
   const elements: ChapterElement[] = [];
   let i = 0;
 
-  // Check for chapter heading on first line
+  // Strip YAML frontmatter (Obsidian-style: --- delimited block at start of file)
+  if (i < lines.length && lines[i].trim() === "---") {
+    i++;
+    while (i < lines.length && lines[i].trim() !== "---") {
+      i++;
+    }
+    if (i < lines.length) i++; // skip closing ---
+    while (i < lines.length && lines[i].trim() === "") i++;
+  }
+
+  // Check for chapter heading
   if (i < lines.length && /^CHAPTER\s+\d+/.test(lines[i])) {
-    elements.push({ type: "heading", text: lines[i] });
+    const translatedHeading = lines[i].replace(/^CHAPTER/, chapterWord);
+    elements.push({ type: "heading", text: translatedHeading });
     i++;
     // Skip blank lines after heading
     while (i < lines.length && lines[i].trim() === "") i++;
@@ -507,8 +562,20 @@ async function main() {
   const font = resolveFont();
   console.log(`Using font: ${font.name}`);
 
+  // Resolve chapter heading translation
+  const langCode = options.lang ?? "EN";
+  const chapterWord = CHAPTER_TRANSLATIONS[langCode];
+  if (!chapterWord) {
+    const supported = Object.keys(CHAPTER_TRANSLATIONS).join(", ");
+    console.error(`Unsupported language code: ${options.lang}\nSupported: ${supported}`);
+    process.exit(1);
+  }
+  if (langCode !== "EN") {
+    console.log(`Language: ${langCode} ("${chapterWord}")`);
+  }
+
   // Parse chapters
-  const chapters = chapterFiles.map((f) => parseChapter(f));
+  const chapters = chapterFiles.map((f) => parseChapter(f, chapterWord));
 
   // Build document definition
   const docDef = buildDocDefinition(chapters, options, font.name);
