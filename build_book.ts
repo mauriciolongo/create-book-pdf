@@ -1,7 +1,6 @@
 #!/usr/bin/env bun
 /**
  * Build book PDF from chapter_*.md files using pdfmake.
- * TypeScript/Bun alternative to build_book.py (WeasyPrint).
  */
 
 import { existsSync, readFileSync, createWriteStream } from "node:fs";
@@ -44,7 +43,7 @@ interface FontDescriptors {
   };
 }
 
-// ---- Constants (matching book-template.html CSS) ----
+// ---- Constants ----
 
 const PAGE_WIDTH = 432; // 6in in points
 const PAGE_HEIGHT = 648; // 9in in points
@@ -87,7 +86,7 @@ function parseArgs(): { directory: string; options: BuildOptions } {
   return { directory: resolve(directory), options };
 }
 
-// ---- Chapter parsing (mirrors build_book.py) ----
+// ---- Chapter parsing ----
 
 function parseChapter(filepath: string): ChapterElement[] {
   const content = readFileSync(filepath, "utf-8");
@@ -144,8 +143,8 @@ function typographicSubstitutions(text: string): string {
 
 function parseInlineFormatting(text: string): TextSegment[] {
   const segments: TextSegment[] = [];
-  // Match ***bold italic***, **bold**, *italic* — longest marker first
-  const pattern = /\*{3}(.+?)\*{3}|\*{2}(.+?)\*{2}|\*(.+?)\*/g;
+  // Match ***bold italic***, **bold**, *italic* (and ___ / __ / _ equivalents) — longest marker first
+  const pattern = /\*{3}(.+?)\*{3}|_{3}(.+?)_{3}|\*{2}(.+?)\*{2}|_{2}(.+?)_{2}|\*(.+?)\*|_(.+?)_/g;
   let lastIndex = 0;
   let match;
 
@@ -153,12 +152,12 @@ function parseInlineFormatting(text: string): TextSegment[] {
     if (match.index > lastIndex) {
       segments.push({ text: text.slice(lastIndex, match.index) });
     }
-    if (match[1] !== undefined) {
-      segments.push({ text: match[1], bold: true, italics: true });
-    } else if (match[2] !== undefined) {
-      segments.push({ text: match[2], bold: true });
-    } else if (match[3] !== undefined) {
-      segments.push({ text: match[3], italics: true });
+    if (match[1] !== undefined || match[2] !== undefined) {
+      segments.push({ text: (match[1] ?? match[2])!, bold: true, italics: true });
+    } else if (match[3] !== undefined || match[4] !== undefined) {
+      segments.push({ text: (match[3] ?? match[4])!, bold: true });
+    } else if (match[5] !== undefined || match[6] !== undefined) {
+      segments.push({ text: (match[5] ?? match[6])!, italics: true });
     }
     lastIndex = match.index + match[0].length;
   }

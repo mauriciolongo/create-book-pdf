@@ -76,9 +76,9 @@ She *whispered* something **important** to him.
 
 Standard Markdown bold/italic markers are supported in paragraph text:
 
-- `*text*` — italic
-- `**text**` — bold
-- `***text***` — bold italic
+- `*text*` or `_text_` — italic
+- `**text**` or `__text__` — bold
+- `***text***` or `___text___` — bold italic
 
 ### Paragraph indentation
 
