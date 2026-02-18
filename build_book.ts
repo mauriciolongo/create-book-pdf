@@ -23,6 +23,12 @@ interface ChapterElement {
   text?: string;
 }
 
+interface TextSegment {
+  text: string;
+  bold?: boolean;
+  italics?: boolean;
+}
+
 interface BuildOptions {
   title?: string;
   author?: string;
@@ -132,6 +138,36 @@ function parseChapter(filepath: string): ChapterElement[] {
 
 function typographicSubstitutions(text: string): string {
   return text.replace(/--/g, "\u2014");
+}
+
+// ---- Inline formatting (Markdown bold/italic) ----
+
+function parseInlineFormatting(text: string): TextSegment[] {
+  const segments: TextSegment[] = [];
+  // Match ***bold italic***, **bold**, *italic* — longest marker first
+  const pattern = /\*{3}(.+?)\*{3}|\*{2}(.+?)\*{2}|\*(.+?)\*/g;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = pattern.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      segments.push({ text: text.slice(lastIndex, match.index) });
+    }
+    if (match[1] !== undefined) {
+      segments.push({ text: match[1], bold: true, italics: true });
+    } else if (match[2] !== undefined) {
+      segments.push({ text: match[2], bold: true });
+    } else if (match[3] !== undefined) {
+      segments.push({ text: match[3], italics: true });
+    }
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < text.length) {
+    segments.push({ text: text.slice(lastIndex) });
+  }
+
+  return segments.length > 0 ? segments : [{ text }];
 }
 
 // ---- Font resolution ----
@@ -371,15 +407,16 @@ function buildDocDefinition(
         needNoIndent = true;
       } else if (el.type === "paragraph") {
         const processed = typographicSubstitutions(el.text!);
+        const segments = parseInlineFormatting(processed);
         if (needNoIndent) {
           content.push({
-            text: processed,
+            text: segments,
             alignment: "justify",
           });
           needNoIndent = false;
         } else {
           content.push({
-            text: INDENT_CHARS + processed,
+            text: [{ text: INDENT_CHARS }, ...segments],
             alignment: "justify",
             preserveLeadingSpaces: true,
           } as any);
