@@ -45,6 +45,15 @@ bun run build_book.ts <directory> [--title "Title"] [--author "Author"] [--cover
 7. Generates a 6"×9" PDF with page numbers, chapter breaks, and first-line indentation
 8. Page numbers suppressed on cover and title pages
 
+## Installation
+
+Clone this repo into your Claude Code skills directory:
+
+```bash
+git clone <repo-url> ~/.claude/skills/create-book-pdf
+cd ~/.claude/skills/create-book-pdf && bun install
+```
+
 ## Files
 
 - `build_book.ts` — Build script (Bun + pdfmake)

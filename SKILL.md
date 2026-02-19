@@ -32,7 +32,7 @@ If the user provided a directory argument, resolve it to an absolute path. Other
 Run the TypeScript build script with Bun. Pass all arguments through:
 
 ```bash
-bun run ~/Dropbox/work/code/create-book-pdf/build_book.ts <target-directory> [--title "Title"] [--author "Author"] [--cover /path/to/cover.png] [--lang CODE]
+bun run ~/.claude/skills/create-book-pdf/build_book.ts <target-directory> [--title "Title"] [--author "Author"] [--cover /path/to/cover.png] [--lang CODE]
 ```
 
 The script handles everything: finding chapters, parsing content, formatting, and PDF generation. It produces `book_output.pdf` in the target directory.
