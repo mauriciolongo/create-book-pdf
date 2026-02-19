@@ -148,20 +148,6 @@ function parseChapter(filepath: string, chapterWord: string = "CHAPTER"): Chapte
     while (i < lines.length && lines[i].trim() === "") i++;
   }
 
-  // Check for chapter heading
-  if (i < lines.length && /^CHAPTER\s+\d+/.test(lines[i])) {
-    const translatedHeading = lines[i].replace(/^CHAPTER/, chapterWord);
-    elements.push({ type: "heading", text: translatedHeading });
-    i++;
-    // Skip blank lines after heading
-    while (i < lines.length && lines[i].trim() === "") i++;
-    // Next non-blank line is subtitle
-    if (i < lines.length) {
-      elements.push({ type: "subtitle", text: lines[i] });
-      i++;
-    }
-  }
-
   let paraLines: string[] = [];
 
   function flushPara() {
@@ -173,7 +159,15 @@ function parseChapter(filepath: string, chapterWord: string = "CHAPTER"): Chapte
 
   while (i < lines.length) {
     const stripped = lines[i].trim();
-    if (stripped === "* * *") {
+    if (/^# /.test(stripped)) {
+      flushPara();
+      let headingText = stripped.slice(2);
+      headingText = headingText.replace(/^CHAPTER/, chapterWord);
+      elements.push({ type: "heading", text: headingText });
+    } else if (/^## /.test(stripped)) {
+      flushPara();
+      elements.push({ type: "subtitle", text: stripped.slice(3) });
+    } else if (stripped === "* * *") {
       flushPara();
       elements.push({ type: "scene_break" });
     } else if (stripped === "") {

@@ -47,12 +47,12 @@ Files must be named `chapter_01.md`, `chapter_02.md`, etc. (only `chapter_*` fil
 
 YAML frontmatter (Obsidian-style `---` delimited blocks at the start of the file) is automatically stripped if present.
 
-The files are plain text with this structure:
+The files are plain text with Markdown headings:
 
 ```
-CHAPTER 1
+# CHAPTER 1
 
-Location or Date Subtitle
+## Location or Date Subtitle
 
 First paragraph after the subtitle. Not indented.
 
@@ -69,8 +69,8 @@ She *whispered* something **important** to him.
 
 ### Elements
 
-- **Line 1**: `CHAPTER N` — rendered as a centered chapter heading.
-- **First non-blank line after heading**: subtitle (location, date, etc.), centered and italic.
+- **`# Heading`**: Heading 1 — rendered as a centered chapter heading (e.g., `# CHAPTER 1`).
+- **`## Heading`**: Heading 2 — rendered as a centered italic subtitle (e.g., `## London, 1923`).
 - **`* * *`** on its own line: scene break (centered spaced asterisks).
 - **Blank lines**: separate paragraphs.
 - **`--`**: automatically converted to em dash (—).
