@@ -93,8 +93,9 @@ const MARGIN_SIDE = 47; // 0.65in ≈ 46.8pt
 const MARGIN_TB = 54; // 0.75in = 54pt
 const CONTENT_WIDTH = PAGE_WIDTH - 2 * MARGIN_SIDE; // 338pt
 
-// Unicode spaces for first-line indent: em-space (1em=12pt) + en-space (0.5em=6pt) = 1.5em = 18pt
-const INDENT_CHARS = "\u2003\u2002";
+// Non-breaking spaces for first-line indent (~18pt at 12pt serif).
+// NBSP is not stretched by PDF justification, unlike em/en-space.
+const INDENT_CHARS = "\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0";
 
 // Scene break: asterisks separated by em-space + en-space (≈18pt gap, matching CSS letter-spacing)
 const SCENE_BREAK_TEXT = "*\u2003\u2002*\u2003\u2002*";
@@ -152,7 +153,17 @@ function parseChapter(filepath: string, chapterWord: string = "CHAPTER"): Chapte
 
   function flushPara() {
     if (paraLines.length > 0) {
-      elements.push({ type: "paragraph", text: paraLines.join(" ") });
+      // Join lines: if a line ends with a single hyphen (not --), join without
+      // a space to reconnect hard-wrapped hyphenated words (e.g. "Earth-\nside").
+      let joined = paraLines[0];
+      for (let j = 1; j < paraLines.length; j++) {
+        if (joined.endsWith("-") && !joined.endsWith("--")) {
+          joined += paraLines[j];
+        } else {
+          joined += " " + paraLines[j];
+        }
+      }
+      elements.push({ type: "paragraph", text: joined });
       paraLines = [];
     }
   }
@@ -362,6 +373,7 @@ function buildDocDefinition(
   chapters: ChapterElement[][],
   options: BuildOptions,
   fontName: string,
+  frontmatter?: ChapterElement[],
 ): TDocumentDefinitions {
   const content: Content[] = [];
   const hasCover = !!options.cover;
@@ -415,6 +427,63 @@ function buildDocDefinition(
     } as any);
   }
 
+  // Frontmatter section (between title page and first chapter)
+  if (frontmatter && frontmatter.length > 0) {
+    let needNoIndent = true;
+    for (const el of frontmatter) {
+      if (el.type === "heading") {
+        content.push({
+          text: typographicSubstitutions(el.text!),
+          fontSize: 20,
+          bold: true,
+          alignment: "center",
+          characterSpacing: 2,
+          margin: [0, 72, 0, 4],
+        });
+        needNoIndent = true;
+      } else if (el.type === "subtitle") {
+        content.push({
+          text: typographicSubstitutions(el.text!),
+          fontSize: 10,
+          italics: true,
+          alignment: "center",
+          margin: [0, 0, 0, 24],
+        });
+        needNoIndent = true;
+      } else if (el.type === "scene_break") {
+        content.push({
+          text: SCENE_BREAK_TEXT,
+          alignment: "center",
+          fontSize: 12,
+          margin: [0, 18, 0, 18],
+        });
+        needNoIndent = true;
+      } else if (el.type === "paragraph") {
+        const processed = typographicSubstitutions(el.text!);
+        const segments = parseInlineFormatting(processed);
+        if (needNoIndent) {
+          content.push({
+            text: segments,
+            alignment: "justify",
+          });
+          needNoIndent = false;
+        } else {
+          const indented = [
+            { ...segments[0], text: INDENT_CHARS + segments[0].text },
+            ...segments.slice(1),
+          ];
+          content.push({
+            text: indented,
+            alignment: "justify",
+            preserveLeadingSpaces: true,
+          } as any);
+        }
+      }
+    }
+    // Page break so chapter 1 starts on a new page
+    content.push({ text: "", pageBreak: "after" } as any);
+  }
+
   // Chapters
   let isFirstChapter = true;
   for (const elements of chapters) {
@@ -463,8 +532,12 @@ function buildDocDefinition(
           });
           needNoIndent = false;
         } else {
+          const indented = [
+            { ...segments[0], text: INDENT_CHARS + segments[0].text },
+            ...segments.slice(1),
+          ];
           content.push({
-            text: [{ text: INDENT_CHARS }, ...segments],
+            text: indented,
             alignment: "justify",
             preserveLeadingSpaces: true,
           } as any);
@@ -568,11 +641,19 @@ async function main() {
     console.log(`Language: ${langCode} ("${chapterWord}")`);
   }
 
+  // Check for optional frontmatter
+  const frontmatterPath = join(directory, "frontmatter.md");
+  let frontmatter: ChapterElement[] | undefined;
+  if (existsSync(frontmatterPath)) {
+    frontmatter = parseChapter(frontmatterPath);
+    console.log("Frontmatter: frontmatter.md");
+  }
+
   // Parse chapters
   const chapters = chapterFiles.map((f) => parseChapter(f, chapterWord));
 
   // Build document definition
-  const docDef = buildDocDefinition(chapters, options, font.name);
+  const docDef = buildDocDefinition(chapters, options, font.name, frontmatter);
 
   // Generate PDF
   const outputPdf = join(directory, "book_output.pdf");

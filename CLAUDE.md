@@ -30,13 +30,14 @@ bun run build_book.ts <directory> [--title "Title"] [--author "Author"] [--cover
 - Uses **pdfmake** for pure-JS PDF generation
 - Auto-detects serif fonts: Georgia → Liberation Serif → DejaVu Serif
 - Markdown headings: `# H1` for chapter title, `## H2` for subtitle
+- Optional `frontmatter.md` for dedications, copyright, epigraphs (inserted between title page and chapter 1)
 - First-line paragraph indent via Unicode em/en-spaces
 - Cover images are centered on the page (reads PNG/JPEG dimensions for proper positioning)
 - Inline formatting: `*italic*` / `_italic_`, `**bold**` / `__bold__`, `***bold italic***` / `___bold italic___`
 
 ## How it works
 
-1. Globs for `chapter_*.md` files, sorts by name
+1. Globs for `chapter_*.md` files, sorts by name; detects optional `frontmatter.md`
 2. Strips YAML frontmatter (Obsidian-style `---` blocks) if present
 3. Parses Markdown headings (`#` for title, `##` for subtitle), scene breaks, and paragraphs
 4. Translates "CHAPTER" headings to the target language if `--lang` is set

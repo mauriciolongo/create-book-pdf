@@ -45,6 +45,8 @@ Tell the user the path to the generated PDF file.
 
 Files must be named `chapter_01.md`, `chapter_02.md`, etc. (only `chapter_*` files are included — other files in the directory are ignored). They are sorted by filename.
 
+An optional `frontmatter.md` file in the same directory is automatically included between the title page and the first chapter. Use it for dedications, copyright notices, epigraphs, or acknowledgments. It supports the same formatting as chapter files.
+
 YAML frontmatter (Obsidian-style `---` delimited blocks at the start of the file) is automatically stripped if present.
 
 The files are plain text with Markdown headings:
