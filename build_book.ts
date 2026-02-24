@@ -461,23 +461,10 @@ function buildDocDefinition(
       } else if (el.type === "paragraph") {
         const processed = typographicSubstitutions(el.text!);
         const segments = parseInlineFormatting(processed);
-        if (needNoIndent) {
-          content.push({
-            text: segments,
-            alignment: "justify",
-          });
-          needNoIndent = false;
-        } else {
-          const indented = [
-            { ...segments[0], text: INDENT_CHARS + segments[0].text },
-            ...segments.slice(1),
-          ];
-          content.push({
-            text: indented,
-            alignment: "justify",
-            preserveLeadingSpaces: true,
-          } as any);
-        }
+        content.push({
+          text: segments,
+          alignment: "justify",
+        });
       }
     }
     // Page break so chapter 1 starts on a new page
