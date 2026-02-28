@@ -15,6 +15,7 @@ A tool for Claude Code that converts a directory of `chapter_*.md` plain-text fi
 --author "Author"     Author name for the title page
 --cover path/to/image Cover image (PNG/JPG) — centered with aspect ratio preserved
 --lang CODE           Translate "CHAPTER" heading (default: EN). Codes: EN, PT, FR, ES, DE, IT, NL, SV, DA, NO, FI, PL, RO, CS, SK, HU, HR, SL, BS, SR, BG, EL, CA, GL, EU, GA, IS, LT, LV, ET, MT, SQ, MK, CY, UK, BE
+--epub                Also generate a KDP-compatible EPUB 3 file (book_output.epub)
 ```
 
 If neither `--title` nor `--author` is provided, the title page is skipped. If `--cover` is omitted, no cover page is generated. If `--lang` is omitted, English is used.
@@ -24,7 +25,7 @@ If neither `--title` nor `--author` is provided, the title page is skipped. If `
 No native dependencies — only needs `bun install`.
 
 ```bash
-bun run build_book.ts <directory> [--title "Title"] [--author "Author"] [--cover path/to/image] [--lang CODE]
+bun run build_book.ts <directory> [--title "Title"] [--author "Author"] [--cover path/to/image] [--lang CODE] [--epub]
 ```
 
 - Uses **pdfmake** for pure-JS PDF generation
@@ -45,6 +46,7 @@ bun run build_book.ts <directory> [--title "Title"] [--author "Author"] [--cover
 6. Parses inline Markdown formatting (bold, italic)
 7. Generates a 6"×9" PDF with page numbers, chapter breaks, and first-line indentation
 8. Page numbers suppressed on cover and title pages
+9. Optionally generates a KDP-compatible EPUB 3 alongside the PDF (`--epub`)
 
 ## Installation
 

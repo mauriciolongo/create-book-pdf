@@ -3,9 +3,11 @@
  * Build book PDF from chapter_*.md files using pdfmake.
  */
 
-import { existsSync, readFileSync, createWriteStream } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, createWriteStream } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { join, resolve, basename } from "node:path";
+import { randomUUID } from "node:crypto";
+import JSZip from "jszip";
 
 // pdfmake server-side printer
 import PdfPrinter from "pdfmake/src/printer";
@@ -33,6 +35,7 @@ interface BuildOptions {
   author?: string;
   cover?: string;
   lang?: string;
+  epub?: boolean;
 }
 
 interface FontDescriptors {
@@ -116,6 +119,8 @@ function parseArgs(): { directory: string; options: BuildOptions } {
       options.cover = args[++i];
     } else if (args[i] === "--lang" && i + 1 < args.length) {
       options.lang = args[++i].toUpperCase();
+    } else if (args[i] === "--epub") {
+      options.epub = true;
     } else if (!args[i].startsWith("--")) {
       directory = args[i];
     }
@@ -123,7 +128,7 @@ function parseArgs(): { directory: string; options: BuildOptions } {
 
   if (!directory) {
     console.error(
-      'Usage: bun run build_book.ts <directory> [--title "Title"] [--author "Author"] [--cover path/to/image] [--lang CODE]',
+      'Usage: bun run build_book.ts <directory> [--title "Title"] [--author "Author"] [--cover path/to/image] [--lang CODE] [--epub]',
     );
     process.exit(1);
   }
@@ -580,6 +585,325 @@ async function generatePdf(
   });
 }
 
+// ---- EPUB generation ----
+
+const LANG_TO_BCP47: Record<string, string> = {
+  EN: "en", PT: "pt", FR: "fr", ES: "es", DE: "de", IT: "it", NL: "nl",
+  SV: "sv", DA: "da", NO: "no", FI: "fi", PL: "pl", RO: "ro", CS: "cs",
+  SK: "sk", HU: "hu", HR: "hr", SL: "sl", BS: "bs", SR: "sr", BG: "bg",
+  EL: "el", CA: "ca", GL: "gl", EU: "eu", GA: "ga", IS: "is", LT: "lt",
+  LV: "lv", ET: "et", MT: "mt", SQ: "sq", MK: "mk", CY: "cy", UK: "uk",
+  BE: "be",
+};
+
+function escapeXml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function segmentsToHtml(segments: TextSegment[]): string {
+  return segments.map((seg) => {
+    const escaped = escapeXml(seg.text);
+    if (seg.bold && seg.italics) return `<strong><em>${escaped}</em></strong>`;
+    if (seg.bold) return `<strong>${escaped}</strong>`;
+    if (seg.italics) return `<em>${escaped}</em>`;
+    return escaped;
+  }).join("");
+}
+
+function chapterToXhtml(
+  elements: ChapterElement[],
+  cssPath: string,
+  docTitle: string,
+  lang: string,
+): string {
+  let body = "";
+  let needNoIndent = true;
+
+  for (const el of elements) {
+    if (el.type === "heading") {
+      const processed = typographicSubstitutions(el.text!);
+      body += `    <h1>${escapeXml(processed)}</h1>\n`;
+      needNoIndent = true;
+    } else if (el.type === "subtitle") {
+      const processed = typographicSubstitutions(el.text!);
+      body += `    <h2>${escapeXml(processed)}</h2>\n`;
+      needNoIndent = true;
+    } else if (el.type === "scene_break") {
+      body += `    <p class="scene-break">* * *</p>\n`;
+      needNoIndent = true;
+    } else if (el.type === "paragraph") {
+      const processed = typographicSubstitutions(el.text!);
+      const segments = parseInlineFormatting(processed);
+      const html = segmentsToHtml(segments);
+      const cls = needNoIndent ? ` class="no-indent"` : "";
+      body += `    <p${cls}>${html}</p>\n`;
+      needNoIndent = false;
+    }
+  }
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="${lang}" lang="${lang}">
+<head>
+  <meta charset="UTF-8" />
+  <title>${escapeXml(docTitle)}</title>
+  <link rel="stylesheet" type="text/css" href="${cssPath}" />
+</head>
+<body>
+${body}</body>
+</html>`;
+}
+
+async function generateEpub(
+  chapters: ChapterElement[][],
+  chapterFiles: string[],
+  options: BuildOptions,
+  outputPath: string,
+  frontmatter?: ChapterElement[],
+): Promise<void> {
+  const zip = new JSZip();
+  const lang = LANG_TO_BCP47[options.lang ?? "EN"] ?? "en";
+  const uuid = randomUUID();
+  const title = options.title ?? "Untitled";
+  const author = options.author ?? "Unknown";
+  const hasTitle = !!(options.title || options.author);
+  const hasCover = !!options.cover;
+
+  // mimetype must be first entry, stored uncompressed
+  zip.file("mimetype", "application/epub+zip", { compression: "STORE" });
+
+  // META-INF/container.xml
+  zip.file("META-INF/container.xml", `<?xml version="1.0" encoding="UTF-8"?>
+<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+  <rootfiles>
+    <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml" />
+  </rootfiles>
+</container>`);
+
+  // CSS
+  const css = `body {
+  font-family: Georgia, "Times New Roman", serif;
+  margin: 1em;
+  line-height: 1.5;
+  color: #111;
+}
+h1 {
+  font-size: 1.6em;
+  font-weight: bold;
+  text-align: center;
+  letter-spacing: 0.1em;
+  margin: 3em 0 0.3em 0;
+  page-break-before: always;
+}
+h2 {
+  font-size: 0.85em;
+  font-style: italic;
+  font-weight: normal;
+  text-align: center;
+  margin: 0 0 2em 0;
+}
+p {
+  text-indent: 1.5em;
+  text-align: justify;
+  margin: 0;
+}
+p.no-indent {
+  text-indent: 0;
+}
+p.scene-break {
+  text-indent: 0;
+  text-align: center;
+  letter-spacing: 0.5em;
+  margin: 1.5em 0;
+}
+.title-page {
+  text-align: center;
+  margin-top: 40%;
+}
+.title-page h1 {
+  font-size: 2.5em;
+  letter-spacing: 0;
+  margin: 0 0 0.3em 0;
+  page-break-before: auto;
+}
+.title-page p {
+  font-size: 1.2em;
+  font-style: italic;
+  text-indent: 0;
+}
+.frontmatter p {
+  text-indent: 0;
+}`;
+  zip.file("OEBPS/style.css", css);
+
+  // Build manifest items and spine items
+  const manifestItems: string[] = [];
+  const spineItems: string[] = [];
+  const tocEntries: { id: string; label: string; href: string }[] = [];
+
+  // Cover image
+  if (hasCover && options.cover) {
+    const coverPath = resolve(options.cover);
+    const coverData = readFileSync(coverPath);
+    const ext = coverPath.toLowerCase().endsWith(".png") ? "png" : "jpeg";
+    const mediaType = ext === "png" ? "image/png" : "image/jpeg";
+    zip.file(`OEBPS/cover.${ext === "png" ? "png" : "jpg"}`, coverData);
+    const coverFilename = ext === "png" ? "cover.png" : "cover.jpg";
+    manifestItems.push(`    <item id="cover-image" href="${coverFilename}" media-type="${mediaType}" properties="cover-image" />`);
+
+    // Cover XHTML page
+    const coverXhtml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="${lang}" lang="${lang}">
+<head>
+  <meta charset="UTF-8" />
+  <title>Cover</title>
+  <link rel="stylesheet" type="text/css" href="style.css" />
+</head>
+<body>
+  <div style="text-align: center;">
+    <img src="${coverFilename}" alt="Cover" style="max-width: 100%; max-height: 100%;" />
+  </div>
+</body>
+</html>`;
+    zip.file("OEBPS/cover.xhtml", coverXhtml);
+    manifestItems.push(`    <item id="cover" href="cover.xhtml" media-type="application/xhtml+xml" />`);
+    spineItems.push(`    <itemref idref="cover" />`);
+  }
+
+  // Title page
+  if (hasTitle) {
+    const titleXhtml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="${lang}" lang="${lang}">
+<head>
+  <meta charset="UTF-8" />
+  <title>${escapeXml(title)}</title>
+  <link rel="stylesheet" type="text/css" href="style.css" />
+</head>
+<body>
+  <div class="title-page">
+    <h1>${escapeXml(typographicSubstitutions(title))}</h1>
+${options.author ? `    <p>${escapeXml(options.author)}</p>\n` : ""
+    }  </div>
+</body>
+</html>`;
+    zip.file("OEBPS/title.xhtml", titleXhtml);
+    manifestItems.push(`    <item id="title-page" href="title.xhtml" media-type="application/xhtml+xml" />`);
+    spineItems.push(`    <itemref idref="title-page" />`);
+  }
+
+  // Frontmatter
+  if (frontmatter && frontmatter.length > 0) {
+    const fmXhtml = chapterToXhtml(frontmatter, "style.css", "Frontmatter", lang)
+      .replace("<body>", `<body class="frontmatter">`);
+    zip.file("OEBPS/frontmatter.xhtml", fmXhtml);
+    manifestItems.push(`    <item id="frontmatter" href="frontmatter.xhtml" media-type="application/xhtml+xml" />`);
+    spineItems.push(`    <itemref idref="frontmatter" />`);
+  }
+
+  // Chapter files
+  for (let ci = 0; ci < chapters.length; ci++) {
+    const chNum = String(ci + 1).padStart(2, "0");
+    const chId = `chapter_${chNum}`;
+    const chFile = `${chId}.xhtml`;
+
+    // Extract chapter title from heading element
+    const headingEl = chapters[ci].find((el) => el.type === "heading");
+    const chLabel = headingEl ? typographicSubstitutions(headingEl.text!) : `Chapter ${ci + 1}`;
+
+    // First chapter: don't force page-break-before on its h1 (it's already on a new page)
+    let xhtml = chapterToXhtml(chapters[ci], "style.css", chLabel, lang);
+    if (ci === 0) {
+      xhtml = xhtml.replace(/<h1>/, `<h1 style="page-break-before: auto;">`);
+    }
+
+    zip.file(`OEBPS/${chFile}`, xhtml);
+    manifestItems.push(`    <item id="${chId}" href="${chFile}" media-type="application/xhtml+xml" />`);
+    spineItems.push(`    <itemref idref="${chId}" />`);
+    tocEntries.push({ id: chId, label: chLabel, href: chFile });
+  }
+
+  // TOC nav document (EPUB 3)
+  const tocLis = tocEntries.map((e) => `      <li><a href="${e.href}">${escapeXml(e.label)}</a></li>`).join("\n");
+  const tocXhtml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="${lang}" lang="${lang}">
+<head>
+  <meta charset="UTF-8" />
+  <title>Table of Contents</title>
+</head>
+<body>
+  <nav epub:type="toc" id="toc">
+    <h1>Table of Contents</h1>
+    <ol>
+${tocLis}
+    </ol>
+  </nav>
+  <nav epub:type="landmarks" hidden="">
+    <ol>
+      <li><a epub:type="toc" href="toc.xhtml">Table of Contents</a></li>
+${hasCover ? `      <li><a epub:type="cover" href="cover.xhtml">Cover</a></li>\n` : ""
+    }${hasTitle ? `      <li><a epub:type="titlepage" href="title.xhtml">Title Page</a></li>\n` : ""
+    }${tocEntries.length > 0 ? `      <li><a epub:type="bodymatter" href="${tocEntries[0].href}">Start of Content</a></li>\n` : ""
+    }    </ol>
+  </nav>
+</body>
+</html>`;
+  zip.file("OEBPS/toc.xhtml", tocXhtml);
+  manifestItems.push(`    <item id="toc" href="toc.xhtml" media-type="application/xhtml+xml" properties="nav" />`);
+
+  // NCX fallback
+  const ncxPoints = tocEntries.map((e, i) => `    <navPoint id="navpoint-${i + 1}" playOrder="${i + 1}">
+      <navLabel><text>${escapeXml(e.label)}</text></navLabel>
+      <content src="${e.href}" />
+    </navPoint>`).join("\n");
+  const ncx = `<?xml version="1.0" encoding="UTF-8"?>
+<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
+  <head>
+    <meta name="dtb:uid" content="urn:uuid:${uuid}" />
+    <meta name="dtb:depth" content="1" />
+    <meta name="dtb:totalPageCount" content="0" />
+    <meta name="dtb:maxPageNumber" content="0" />
+  </head>
+  <docTitle><text>${escapeXml(title)}</text></docTitle>
+  <navMap>
+${ncxPoints}
+  </navMap>
+</ncx>`;
+  zip.file("OEBPS/toc.ncx", ncx);
+  manifestItems.push(`    <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml" />`);
+
+  // Stylesheet manifest entry
+  manifestItems.push(`    <item id="css" href="style.css" media-type="text/css" />`);
+
+  // content.opf
+  const opf = `<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid" xml:lang="${lang}">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:identifier id="bookid">urn:uuid:${uuid}</dc:identifier>
+    <dc:title>${escapeXml(title)}</dc:title>
+    <dc:creator>${escapeXml(author)}</dc:creator>
+    <dc:language>${lang}</dc:language>
+    <meta property="dcterms:modified">${new Date().toISOString().replace(/\.\d+Z$/, "Z")}</meta>
+  </metadata>
+  <manifest>
+${manifestItems.join("\n")}
+  </manifest>
+  <spine toc="ncx">
+${spineItems.join("\n")}
+  </spine>
+</package>`;
+  zip.file("OEBPS/content.opf", opf);
+
+  const buffer = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
+  writeFileSync(outputPath, buffer);
+}
+
 // ---- Main ----
 
 async function main() {
@@ -646,7 +970,15 @@ async function main() {
   const outputPdf = join(directory, "book_output.pdf");
   console.log("Generating PDF...");
   await generatePdf(docDef, outputPdf, font.descriptors);
-  console.log(`\nPDF created: ${outputPdf}`);
+  console.log(`PDF created: ${outputPdf}`);
+
+  // Generate EPUB (if requested)
+  if (options.epub) {
+    const outputEpub = join(directory, "book_output.epub");
+    console.log("Generating EPUB...");
+    await generateEpub(chapters, chapterFiles, options, outputEpub, frontmatter);
+    console.log(`EPUB created: ${outputEpub}`);
+  }
 }
 
 main().catch((err) => {

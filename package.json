@@ -6,10 +6,12 @@
     "build": "bun run build_book.ts"
   },
   "dependencies": {
+    "jszip": "^3.10.1",
     "pdfmake": "^0.2.0"
   },
   "devDependencies": {
-    "@types/pdfmake": "^0.2.0",
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/jszip": "^3.4.1",
+    "@types/pdfmake": "^0.2.0"
   }
 }
