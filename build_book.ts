@@ -34,6 +34,7 @@ interface BuildOptions {
   title?: string;
   author?: string;
   cover?: string;
+  epubCover?: string;
   lang?: string;
   epub?: boolean;
 }
@@ -117,6 +118,8 @@ function parseArgs(): { directory: string; options: BuildOptions } {
       options.author = args[++i];
     } else if (args[i] === "--cover" && i + 1 < args.length) {
       options.cover = args[++i];
+    } else if (args[i] === "--epub-cover" && i + 1 < args.length) {
+      options.epubCover = args[++i];
     } else if (args[i] === "--lang" && i + 1 < args.length) {
       options.lang = args[++i].toUpperCase();
     } else if (args[i] === "--epub") {
@@ -128,7 +131,7 @@ function parseArgs(): { directory: string; options: BuildOptions } {
 
   if (!directory) {
     console.error(
-      'Usage: bun run build_book.ts <directory> [--title "Title"] [--author "Author"] [--cover path/to/image] [--lang CODE] [--epub]',
+      'Usage: bun run build_book.ts <directory> [--title "Title"] [--author "Author"] [--cover path/to/image] [--epub-cover path/to/image] [--lang CODE] [--epub]',
     );
     process.exit(1);
   }
@@ -671,7 +674,8 @@ async function generateEpub(
   const title = options.title ?? "Untitled";
   const author = options.author ?? "Unknown";
   const hasTitle = !!(options.title || options.author);
-  const hasCover = !!options.cover;
+  const coverImage = options.epubCover ?? options.cover;
+  const hasCover = !!coverImage;
 
   // mimetype must be first entry, stored uncompressed
   zip.file("mimetype", "application/epub+zip", { compression: "STORE" });
@@ -733,6 +737,7 @@ p.scene-break {
 .title-page p {
   font-size: 1.2em;
   font-style: italic;
+  text-align: center;
   text-indent: 0;
 }
 .frontmatter p {
@@ -746,8 +751,8 @@ p.scene-break {
   const tocEntries: { id: string; label: string; href: string }[] = [];
 
   // Cover image
-  if (hasCover && options.cover) {
-    const coverPath = resolve(options.cover);
+  if (hasCover && coverImage) {
+    const coverPath = resolve(coverImage);
     const coverData = readFileSync(coverPath);
     const ext = coverPath.toLowerCase().endsWith(".png") ? "png" : "jpeg";
     const mediaType = ext === "png" ? "image/png" : "image/jpeg";
@@ -926,7 +931,7 @@ async function main() {
     console.log(`  ${basename(f)}`);
   }
 
-  // Validate cover image
+  // Validate cover images
   if (options.cover) {
     options.cover = resolve(options.cover);
     if (!existsSync(options.cover)) {
@@ -934,6 +939,14 @@ async function main() {
       process.exit(1);
     }
     console.log(`Cover image: ${options.cover}`);
+  }
+  if (options.epubCover) {
+    options.epubCover = resolve(options.epubCover);
+    if (!existsSync(options.epubCover)) {
+      console.error(`EPUB cover image not found: ${options.epubCover}`);
+      process.exit(1);
+    }
+    console.log(`EPUB cover image: ${options.epubCover}`);
   }
 
   // Resolve font

@@ -2,7 +2,7 @@
 name: create-book-pdf
 description: Combine chapter_*.md files into a professionally formatted book PDF
 user_invocable: true
-arguments: "directory --title TITLE --author AUTHOR --cover COVER_IMAGE --lang CODE --epub"
+arguments: "directory --title TITLE --author AUTHOR --cover COVER_IMAGE --epub-cover EPUB_COVER_IMAGE --lang CODE --epub"
 ---
 
 # Create Book PDF
@@ -14,7 +14,8 @@ Combine chapter files into a well-formatted 6"x9" book PDF.
 - `directory` (optional): Path to the directory containing `chapter_*.md` files. Defaults to the current working directory.
 - `--title "Title"` (optional): Book title for the title page.
 - `--author "Name"` (optional): Author name for the title page.
-- `--cover path/to/image` (optional): Path to a cover image (PNG, JPG) for a full-page cover.
+- `--cover path/to/image` (optional): Path to a cover image (PNG, JPG) for the PDF (and EPUB if `--epub-cover` is not set).
+- `--epub-cover path/to/image` (optional): Separate cover image for the EPUB. Falls back to `--cover` if not specified.
 - `--lang CODE` (optional): Language code for translating the "CHAPTER" heading. Default: `EN`. Supported: EN, PT, FR, ES, DE, IT, NL, SV, DA, NO, FI, PL, RO, CS, SK, HU, HR, SL, BS, SR, BG, EL, CA, GL, EU, GA, IS, LT, LV, ET, MT, SQ, MK, CY, UK, BE.
 - `--epub` (optional): Also generate a KDP-compatible EPUB 3 file (`book_output.epub`) alongside the PDF.
 
@@ -33,7 +34,7 @@ If the user provided a directory argument, resolve it to an absolute path. Other
 Run the TypeScript build script with Bun. Pass all arguments through:
 
 ```bash
-bun run ~/.claude/skills/create-book-pdf/build_book.ts <target-directory> [--title "Title"] [--author "Author"] [--cover /path/to/cover.png] [--lang CODE] [--epub]
+bun run ~/.claude/skills/create-book-pdf/build_book.ts <target-directory> [--title "Title"] [--author "Author"] [--cover /path/to/cover.png] [--epub-cover /path/to/epub-cover.jpg] [--lang CODE] [--epub]
 ```
 
 The script handles everything: finding chapters, parsing content, formatting, and PDF generation. It produces `book_output.pdf` in the target directory. If `--epub` is passed, it also produces `book_output.epub`.
