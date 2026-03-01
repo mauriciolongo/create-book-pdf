@@ -2,7 +2,7 @@
 name: create-book-pdf
 description: Combine chapter_*.md files into a professionally formatted book PDF
 user_invocable: true
-arguments: "directory --title TITLE --author AUTHOR --cover COVER_IMAGE --epub-cover EPUB_COVER_IMAGE --lang CODE --epub"
+arguments: "directory --title TITLE --author AUTHOR --cover COVER_IMAGE --epub-cover EPUB_COVER_IMAGE --lang CODE --epub --output NAME"
 ---
 
 # Create Book PDF
@@ -17,7 +17,8 @@ Combine chapter files into a well-formatted 6"x9" book PDF.
 - `--cover path/to/image` (optional): Path to a cover image (PNG, JPG) for the PDF (and EPUB if `--epub-cover` is not set).
 - `--epub-cover path/to/image` (optional): Separate cover image for the EPUB. Falls back to `--cover` if not specified.
 - `--lang CODE` (optional): Language code for translating the "CHAPTER" heading. Default: `EN`. Supported: EN, PT, FR, ES, DE, IT, NL, SV, DA, NO, FI, PL, RO, CS, SK, HU, HR, SL, BS, SR, BG, EL, CA, GL, EU, GA, IS, LT, LV, ET, MT, SQ, MK, CY, UK, BE.
-- `--epub` (optional): Also generate a KDP-compatible EPUB 3 file (`book_output.epub`) alongside the PDF.
+- `--epub` (optional): Also generate a KDP-compatible EPUB 3 file alongside the PDF.
+- `--output "name"` (optional): Base filename for output files (e.g., `--output "Through the Veil"` produces `Through the Veil.pdf` and `Through the Veil.epub`). Defaults to `book_output`.
 
 If neither `--title` nor `--author` is provided, the title page is skipped. If `--cover` is omitted, no cover page is generated. If `--lang` is omitted, English is used.
 
@@ -34,10 +35,10 @@ If the user provided a directory argument, resolve it to an absolute path. Other
 Run the TypeScript build script with Bun. Pass all arguments through:
 
 ```bash
-bun run ~/.claude/skills/create-book-pdf/build_book.ts <target-directory> [--title "Title"] [--author "Author"] [--cover /path/to/cover.png] [--epub-cover /path/to/epub-cover.jpg] [--lang CODE] [--epub]
+bun run ~/.claude/skills/create-book-pdf/build_book.ts <target-directory> [--title "Title"] [--author "Author"] [--cover /path/to/cover.png] [--epub-cover /path/to/epub-cover.jpg] [--lang CODE] [--epub] [--output "name"]
 ```
 
-The script handles everything: finding chapters, parsing content, formatting, and PDF generation. It produces `book_output.pdf` in the target directory. If `--epub` is passed, it also produces `book_output.epub`.
+The script handles everything: finding chapters, parsing content, formatting, and PDF generation. It produces `<name>.pdf` (default `book_output.pdf`) in the target directory. If `--epub` is passed, it also produces `<name>.epub`.
 
 ### 3. Report
 

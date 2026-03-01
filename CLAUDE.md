@@ -16,7 +16,8 @@ A tool for Claude Code that converts a directory of `chapter_*.md` plain-text fi
 --cover path/to/image Cover image (PNG/JPG) — used for PDF (and EPUB if --epub-cover is not set)
 --epub-cover path     Separate cover image for the EPUB (falls back to --cover)
 --lang CODE           Translate "CHAPTER" heading (default: EN). Codes: EN, PT, FR, ES, DE, IT, NL, SV, DA, NO, FI, PL, RO, CS, SK, HU, HR, SL, BS, SR, BG, EL, CA, GL, EU, GA, IS, LT, LV, ET, MT, SQ, MK, CY, UK, BE
---epub                Also generate a KDP-compatible EPUB 3 file (book_output.epub)
+--epub                Also generate a KDP-compatible EPUB 3 file
+--output "name"       Base filename for outputs (default: book_output). E.g. --output "My Book" → My Book.pdf
 ```
 
 If neither `--title` nor `--author` is provided, the title page is skipped. If `--cover` is omitted, no cover page is generated. If `--lang` is omitted, English is used.
@@ -26,7 +27,7 @@ If neither `--title` nor `--author` is provided, the title page is skipped. If `
 No native dependencies — only needs `bun install`.
 
 ```bash
-bun run build_book.ts <directory> [--title "Title"] [--author "Author"] [--cover path/to/image] [--epub-cover path/to/image] [--lang CODE] [--epub]
+bun run build_book.ts <directory> [--title "Title"] [--author "Author"] [--cover path/to/image] [--epub-cover path/to/image] [--lang CODE] [--epub] [--output "name"]
 ```
 
 - Uses **pdfmake** for pure-JS PDF generation
