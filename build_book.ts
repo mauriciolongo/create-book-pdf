@@ -38,6 +38,7 @@ interface BuildOptions {
   lang?: string;
   epub?: boolean;
   output?: string;
+  readerVersion?: "alpha" | "beta";
 }
 
 interface FontDescriptors {
@@ -90,6 +91,47 @@ const CHAPTER_TRANSLATIONS: Record<string, string> = {
   BE: "РАЗДЗЕЛ",
 };
 
+// ---- Reader version translations (alpha/beta builds) ----
+
+const READER_VERSION_TRANSLATIONS: Record<string, { alpha: string; beta: string; doNotDistribute: string }> = {
+  EN: { alpha: "ALPHA READER VERSION", beta: "BETA READER VERSION", doNotDistribute: "DO NOT DISTRIBUTE" },
+  PT: { alpha: "VERSÃO PARA LEITOR ALFA", beta: "VERSÃO PARA LEITOR BETA", doNotDistribute: "NÃO DISTRIBUA" },
+  FR: { alpha: "VERSION LECTEUR ALPHA", beta: "VERSION LECTEUR BÊTA", doNotDistribute: "NE PAS DISTRIBUER" },
+  ES: { alpha: "VERSIÓN LECTOR ALFA", beta: "VERSIÓN LECTOR BETA", doNotDistribute: "NO DISTRIBUIR" },
+  DE: { alpha: "ALPHA-LESER-VERSION", beta: "BETA-LESER-VERSION", doNotDistribute: "NICHT VERTEILEN" },
+  IT: { alpha: "VERSIONE LETTORE ALFA", beta: "VERSIONE LETTORE BETA", doNotDistribute: "NON DISTRIBUIRE" },
+  NL: { alpha: "ALFALEZERVERSIE", beta: "BÈTALEZERVERSIE", doNotDistribute: "NIET VERSPREIDEN" },
+  SV: { alpha: "ALFAVERSION FÖR LÄSARE", beta: "BETAVERSION FÖR LÄSARE", doNotDistribute: "DISTRIBUERA EJ" },
+  DA: { alpha: "ALFA-LÆSERVERSION", beta: "BETA-LÆSERVERSION", doNotDistribute: "MÅ IKKE DISTRIBUERES" },
+  NO: { alpha: "ALFAVERSJON FOR LESERE", beta: "BETAVERSJON FOR LESERE", doNotDistribute: "IKKE DISTRIBUER" },
+  FI: { alpha: "ALFALUKIJAVERSIO", beta: "BETALUKIJAVERSIO", doNotDistribute: "ÄLÄ LEVITÄ" },
+  PL: { alpha: "WERSJA DLA CZYTELNIKA ALFA", beta: "WERSJA DLA CZYTELNIKA BETA", doNotDistribute: "NIE ROZPOWSZECHNIAĆ" },
+  RO: { alpha: "VERSIUNE CITITOR ALFA", beta: "VERSIUNE CITITOR BETA", doNotDistribute: "A NU SE DISTRIBUI" },
+  CS: { alpha: "ALFA VERZE PRO ČTENÁŘE", beta: "BETA VERZE PRO ČTENÁŘE", doNotDistribute: "NEDISTRIBUOVAT" },
+  SK: { alpha: "ALFA VERZIA PRE ČITATEĽA", beta: "BETA VERZIA PRE ČITATEĽA", doNotDistribute: "NEDISTRIBUOVAŤ" },
+  HU: { alpha: "ALFA OLVASÓI VERZIÓ", beta: "BÉTA OLVASÓI VERZIÓ", doNotDistribute: "NE TERJESZD" },
+  HR: { alpha: "ALFA VERZIJA ZA ČITATELJE", beta: "BETA VERZIJA ZA ČITATELJE", doNotDistribute: "NE DISTRIBUIRATI" },
+  SL: { alpha: "ALFA RAZLIČICA ZA BRALCE", beta: "BETA RAZLIČICA ZA BRALCE", doNotDistribute: "NE DISTRIBUIRAJ" },
+  BS: { alpha: "ALFA VERZIJA ZA ČITAOCE", beta: "BETA VERZIJA ZA ČITAOCE", doNotDistribute: "NE DISTRIBUIRATI" },
+  SR: { alpha: "АЛФА ВЕРЗИЈА ЗА ЧИТАОЦЕ", beta: "БЕТА ВЕРЗИЈА ЗА ЧИТАОЦЕ", doNotDistribute: "НЕ ДИСТРИБУИРАТИ" },
+  BG: { alpha: "АЛФА ВЕРСИЯ ЗА ЧИТАТЕЛИ", beta: "БЕТА ВЕРСИЯ ЗА ЧИТАТЕЛИ", doNotDistribute: "ДА НЕ СЕ РАЗПРОСТРАНЯВА" },
+  EL: { alpha: "ΈΚΔΟΣΗ ΑΛΦΑ ΑΝΑΓΝΏΣΤΗ", beta: "ΈΚΔΟΣΗ ΒΉΤΑ ΑΝΑΓΝΏΣΤΗ", doNotDistribute: "ΜΗΝ ΔΙΑΝΈΜΕΤΕ" },
+  CA: { alpha: "VERSIÓ LECTOR ALFA", beta: "VERSIÓ LECTOR BETA", doNotDistribute: "NO DISTRIBUIR" },
+  GL: { alpha: "VERSIÓN LECTOR ALFA", beta: "VERSIÓN LECTOR BETA", doNotDistribute: "NON DISTRIBUÍR" },
+  EU: { alpha: "ALFA IRAKURLE BERTSIOA", beta: "BETA IRAKURLE BERTSIOA", doNotDistribute: "EZ BANATU" },
+  GA: { alpha: "LEAGAN LÉITHEORA ALFA", beta: "LEAGAN LÉITHEORA BÉITE", doNotDistribute: "NÁ SCAIP" },
+  IS: { alpha: "ALFA LESENDAÚTGÁFA", beta: "BETA LESENDAÚTGÁFA", doNotDistribute: "EKKI DREIFA" },
+  LT: { alpha: "ALFA SKAITYTOJO VERSIJA", beta: "BETA SKAITYTOJO VERSIJA", doNotDistribute: "NEPLATINTI" },
+  LV: { alpha: "ALFA LASĪTĀJA VERSIJA", beta: "BETA LASĪTĀJA VERSIJA", doNotDistribute: "NEIZPLATĪT" },
+  ET: { alpha: "ALFA LUGEJA VERSIOON", beta: "BEETA LUGEJA VERSIOON", doNotDistribute: "MITTE LEVITADA" },
+  MT: { alpha: "VERŻJONI QARREJ ALFA", beta: "VERŻJONI QARREJ BETA", doNotDistribute: "TQASSAMX" },
+  SQ: { alpha: "VERSION LEXUESI ALFA", beta: "VERSION LEXUESI BETA", doNotDistribute: "MOS SHPËRNDANI" },
+  MK: { alpha: "АЛФА ВЕРЗИЈА ЗА ЧИТАТЕЛИ", beta: "БЕТА ВЕРЗИЈА ЗА ЧИТАТЕЛИ", doNotDistribute: "НЕ ДИСТРИБУИРАЈ" },
+  CY: { alpha: "FERSIWN DARLLENYDD ALFFA", beta: "FERSIWN DARLLENYDD BETA", doNotDistribute: "PEIDIWCH Â DOSBARTHU" },
+  UK: { alpha: "АЛЬФА ВЕРСІЯ ДЛЯ ЧИТАЧА", beta: "БЕТА ВЕРСІЯ ДЛЯ ЧИТАЧА", doNotDistribute: "НЕ РОЗПОВСЮДЖУВАТИ" },
+  BE: { alpha: "АЛЬФА ВЕРСІЯ ДЛЯ ЧЫТАЧА", beta: "БЕТА ВЕРСІЯ ДЛЯ ЧЫТАЧА", doNotDistribute: "НЕ РАСПАЎСЮДЖВАЦЬ" },
+};
+
 // ---- Constants ----
 
 const PAGE_WIDTH = 432; // 6in in points
@@ -127,6 +169,10 @@ function parseArgs(): { directory: string; options: BuildOptions } {
       options.epub = true;
     } else if (args[i] === "--output" && i + 1 < args.length) {
       options.output = args[++i];
+    } else if (args[i] === "--alpha") {
+      options.readerVersion = "alpha";
+    } else if (args[i] === "--beta") {
+      options.readerVersion = "beta";
     } else if (!args[i].startsWith("--")) {
       directory = args[i];
     }
@@ -134,7 +180,7 @@ function parseArgs(): { directory: string; options: BuildOptions } {
 
   if (!directory) {
     console.error(
-      'Usage: bun run build_book.ts <directory> [--title "Title"] [--author "Author"] [--cover path/to/image] [--epub-cover path/to/image] [--lang CODE] [--epub] [--output name]',
+      'Usage: bun run build_book.ts <directory> [--title "Title"] [--author "Author"] [--cover path/to/image] [--epub-cover path/to/image] [--lang CODE] [--epub] [--output name] [--alpha] [--beta]',
     );
     process.exit(1);
   }
@@ -391,6 +437,10 @@ function buildDocDefinition(
   const hasTitle = !!(options.title || options.author);
   const frontMatterPages = (hasCover ? 1 : 0) + (hasTitle ? 1 : 0);
 
+  // Reader version label (alpha/beta builds)
+  const versionTexts = READER_VERSION_TRANSLATIONS[options.lang ?? "EN"] ?? READER_VERSION_TRANSLATIONS["EN"];
+  const versionLabel = options.readerVersion === "alpha" ? versionTexts.alpha : options.readerVersion === "beta" ? versionTexts.beta : undefined;
+
   // Cover page: full-page image, centered on page
   if (options.cover) {
     const coverPath = resolve(options.cover);
@@ -428,6 +478,21 @@ function buildDocDefinition(
         text: options.author,
         fontSize: 18,
         italics: true,
+        alignment: "center",
+      });
+    }
+    if (versionLabel) {
+      titleStack.push({
+        text: versionLabel,
+        fontSize: 14,
+        bold: true,
+        alignment: "center",
+        margin: [0, 30, 0, 5],
+      });
+      titleStack.push({
+        text: versionTexts.doNotDistribute,
+        fontSize: 12,
+        bold: true,
         alignment: "center",
       });
     }
@@ -546,6 +611,18 @@ function buildDocDefinition(
     isFirstChapter = false;
   }
 
+  // Header: version label on text pages (alpha/beta builds)
+  const header: DynamicContent = (currentPage, _pageCount) => {
+    if (!versionLabel || currentPage <= frontMatterPages) return { text: "" };
+    return {
+      text: versionLabel,
+      alignment: "center" as const,
+      fontSize: 8,
+      color: "#888",
+      margin: [0, 20, 0, 0],
+    };
+  };
+
   // Footer: centered page numbers, suppressed on front matter pages
   const footer: DynamicContent = (currentPage, _pageCount) => {
     if (currentPage <= frontMatterPages) return { text: "" };
@@ -561,6 +638,7 @@ function buildDocDefinition(
   return {
     pageSize: { width: PAGE_WIDTH, height: PAGE_HEIGHT },
     pageMargins: [MARGIN_SIDE, MARGIN_TB, MARGIN_SIDE, MARGIN_TB],
+    header,
     footer,
     defaultStyle: {
       font: fontName,
@@ -680,6 +758,11 @@ async function generateEpub(
   const coverImage = options.epubCover ?? options.cover;
   const hasCover = !!coverImage;
 
+  // Reader version label (alpha/beta builds)
+  const versionTexts = READER_VERSION_TRANSLATIONS[options.lang ?? "EN"] ?? READER_VERSION_TRANSLATIONS["EN"];
+  const versionLabel = options.readerVersion === "alpha" ? versionTexts.alpha : options.readerVersion === "beta" ? versionTexts.beta : undefined;
+  const doNotDistributeText = versionLabel ? versionTexts.doNotDistribute : undefined;
+
   // mimetype must be first entry, stored uncompressed
   zip.file("mimetype", "application/epub+zip", { compression: "STORE" });
 
@@ -745,6 +828,26 @@ p.scene-break {
 }
 .frontmatter p {
   text-indent: 0;
+}
+.reader-version-header {
+  text-indent: 0;
+  text-align: center;
+  font-size: 0.7em;
+  color: #888;
+  margin: 0 0 1em 0;
+}
+.title-page .reader-version {
+  font-size: 1em;
+  font-style: normal;
+  font-weight: bold;
+  text-indent: 0;
+  margin-top: 2em;
+}
+.title-page .do-not-distribute {
+  font-size: 0.9em;
+  font-style: normal;
+  font-weight: bold;
+  text-indent: 0;
 }`;
   zip.file("OEBPS/style.css", css);
 
@@ -797,6 +900,7 @@ p.scene-break {
   <div class="title-page">
     <h1>${escapeXml(typographicSubstitutions(title))}</h1>
 ${options.author ? `    <p>${escapeXml(options.author)}</p>\n` : ""
+    }${versionLabel ? `    <p class="reader-version">${escapeXml(versionLabel)}</p>\n    <p class="do-not-distribute">${escapeXml(doNotDistributeText!)}</p>\n` : ""
     }  </div>
 </body>
 </html>`;
@@ -807,8 +911,11 @@ ${options.author ? `    <p>${escapeXml(options.author)}</p>\n` : ""
 
   // Frontmatter
   if (frontmatter && frontmatter.length > 0) {
-    const fmXhtml = chapterToXhtml(frontmatter, "style.css", "Frontmatter", lang)
+    let fmXhtml = chapterToXhtml(frontmatter, "style.css", "Frontmatter", lang)
       .replace("<body>", `<body class="frontmatter">`);
+    if (versionLabel) {
+      fmXhtml = fmXhtml.replace(`<body class="frontmatter">`, `<body class="frontmatter">\n  <p class="reader-version-header">${escapeXml(versionLabel)}</p>`);
+    }
     zip.file("OEBPS/frontmatter.xhtml", fmXhtml);
     manifestItems.push(`    <item id="frontmatter" href="frontmatter.xhtml" media-type="application/xhtml+xml" />`);
     spineItems.push(`    <itemref idref="frontmatter" />`);
@@ -826,8 +933,11 @@ ${options.author ? `    <p>${escapeXml(options.author)}</p>\n` : ""
 
     // First chapter: don't force page-break-before on its h1 (it's already on a new page)
     let xhtml = chapterToXhtml(chapters[ci], "style.css", chLabel, lang);
-    if (ci === 0) {
+    if (ci === 0 || versionLabel) {
       xhtml = xhtml.replace(/<h1>/, `<h1 style="page-break-before: auto;">`);
+    }
+    if (versionLabel) {
+      xhtml = xhtml.replace("<body>", `<body>\n  <p class="reader-version-header">${escapeXml(versionLabel)}</p>`);
     }
 
     zip.file(`OEBPS/${chFile}`, xhtml);
@@ -966,6 +1076,11 @@ async function main() {
   }
   if (langCode !== "EN") {
     console.log(`Language: ${langCode} ("${chapterWord}")`);
+  }
+  if (options.readerVersion) {
+    const versionTexts = READER_VERSION_TRANSLATIONS[langCode] ?? READER_VERSION_TRANSLATIONS["EN"];
+    const label = options.readerVersion === "alpha" ? versionTexts.alpha : versionTexts.beta;
+    console.log(`Reader version: ${label}`);
   }
 
   // Check for optional frontmatter
