@@ -37,6 +37,7 @@ interface BuildOptions {
   epubCover?: string;
   lang?: string;
   epub?: boolean;
+  nopdf?: boolean;
   output?: string;
   readerVersion?: "alpha" | "beta";
 }
@@ -167,6 +168,8 @@ function parseArgs(): { directory: string; options: BuildOptions } {
       options.lang = args[++i].toUpperCase();
     } else if (args[i] === "--epub") {
       options.epub = true;
+    } else if (args[i] === "--nopdf") {
+      options.nopdf = true;
     } else if (args[i] === "--output" && i + 1 < args.length) {
       options.output = args[++i];
     } else if (args[i] === "--alpha") {
@@ -180,7 +183,7 @@ function parseArgs(): { directory: string; options: BuildOptions } {
 
   if (!directory) {
     console.error(
-      'Usage: bun run build_book.ts <directory> [--title "Title"] [--author "Author"] [--cover path/to/image] [--epub-cover path/to/image] [--lang CODE] [--epub] [--output name] [--alpha] [--beta]',
+      'Usage: bun run build_book.ts <directory> [--title "Title"] [--author "Author"] [--cover path/to/image] [--epub-cover path/to/image] [--lang CODE] [--epub] [--nopdf] [--output name] [--alpha] [--beta]',
     );
     process.exit(1);
   }
@@ -1097,12 +1100,15 @@ async function main() {
   // Build document definition
   const docDef = buildDocDefinition(chapters, options, font.name, frontmatter);
 
-  // Generate PDF
   const baseName = options.output ?? "book_output";
-  const outputPdf = join(directory, `${baseName}.pdf`);
-  console.log("Generating PDF...");
-  await generatePdf(docDef, outputPdf, font.descriptors);
-  console.log(`PDF created: ${outputPdf}`);
+
+  // Generate PDF (unless --nopdf)
+  if (!options.nopdf) {
+    const outputPdf = join(directory, `${baseName}.pdf`);
+    console.log("Generating PDF...");
+    await generatePdf(docDef, outputPdf, font.descriptors);
+    console.log(`PDF created: ${outputPdf}`);
+  }
 
   // Generate EPUB (if requested)
   if (options.epub) {
